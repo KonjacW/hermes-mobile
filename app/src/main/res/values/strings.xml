@@ -279,6 +279,15 @@
     <string name="theme_preset_catppuccin">Catppuccin</string>
     <string name="theme_preset_amoled">AMOLED Black (Dark only)</string>
     <string name="theme_preset_nord">Nord</string>
+    <string name="theme_preset_black_gold">Black &amp; Gold (Dark only)</string>
+
+    <!-- Wallpaper -->
+    <string name="settings_wallpaper_title">Wallpaper</string>
+    <string name="settings_wallpaper_pick">Choose photo</string>
+    <string name="settings_wallpaper_remove">Remove</string>
+    <string name="settings_wallpaper_brightness">Brightness</string>
+    <string name="settings_wallpaper_scrim">Scrim opacity</string>
+    <string name="settings_wallpaper_blur">Blur</string>
 
     <!-- Language -->
     <string name="settings_item_language">Language</string>
