@@ -262,6 +262,7 @@
     <string name="settings_wallpaper_brightness">亮度</string>
     <string name="settings_wallpaper_scrim">遮罩不透明度</string>
     <string name="settings_wallpaper_blur">模糊</string>
+    <string name="settings_wallpaper_pick_failed">无法读取这张照片，换一张试试</string>
     <string name="settings_item_language">语言</string>
     <string name="language_system">跟随系统</string>
     <string name="language_english">English</string>

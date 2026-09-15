@@ -288,6 +288,7 @@
     <string name="settings_wallpaper_brightness">Brightness</string>
     <string name="settings_wallpaper_scrim">Scrim opacity</string>
     <string name="settings_wallpaper_blur">Blur</string>
+    <string name="settings_wallpaper_pick_failed">Could not read that photo. Try another one.</string>
 
     <!-- Language -->
     <string name="settings_item_language">Language</string>

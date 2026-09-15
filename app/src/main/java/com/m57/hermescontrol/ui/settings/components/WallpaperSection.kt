@@ -1,7 +1,6 @@
 package com.m57.hermescontrol.ui.settings.components
 
-import android.content.Context
-import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +15,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.config.WallpaperConfig
+import com.m57.hermescontrol.data.config.WallpaperFiles
 import com.m57.hermescontrol.ui.settings.SectionCard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,12 +42,34 @@ internal fun WallpaperSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // The picker can sit open for a while, so the callback reads the newest config
+    // rather than whatever the launcher captured when it was created.
+    val currentWallpaper = rememberUpdatedState(wallpaper)
     val pickLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
                 scope.launch {
-                    val path = withContext(Dispatchers.IO) { persistWallpaper(context, uri) }
-                    if (path != null) onWallpaperChange(wallpaper.copy(uri = path))
+                    val previous = currentWallpaper.value.uri
+                    val path =
+                        withContext(Dispatchers.IO) {
+                            WallpaperFiles.store(context.filesDir, System.currentTimeMillis()) {
+                                context.contentResolver.openInputStream(uri)
+                            }
+                        }
+                    if (path == null) {
+                        // A silent no-op here is indistinguishable from the display
+                        // not refreshing, which is exactly what made this hard to
+                        // diagnose once.
+                        Toast.makeText(context, R.string.settings_wallpaper_pick_failed, Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+                    onWallpaperChange(currentWallpaper.value.copy(uri = path))
+                    // Retire the superseded photo only once the new path is the live
+                    // config. Interrupted before this point, the app keeps an orphan
+                    // file (harmless) instead of a config pointing at a deleted photo.
+                    if (previous != null && previous != path) {
+                        withContext(Dispatchers.IO) { File(previous).delete() }
+                    }
                 }
             }
         }
@@ -61,8 +84,13 @@ internal fun WallpaperSection(
             OutlinedButton(onClick = { pickLauncher.launch("image/*") }) {
                 Text(stringResource(R.string.settings_wallpaper_pick))
             }
-            if (wallpaper.uri != null) {
-                TextButton(onClick = onWallpaperRemoved) {
+            wallpaper.uri?.let { path ->
+                TextButton(
+                    onClick = {
+                        onWallpaperRemoved()
+                        scope.launch { withContext(Dispatchers.IO) { File(path).delete() } }
+                    },
+                ) {
                     Text(stringResource(R.string.settings_wallpaper_remove))
                 }
             }
@@ -110,19 +138,3 @@ private fun WallpaperSlider(
         modifier = Modifier.fillMaxWidth(),
     )
 }
-
-/**
- * Copy a picked gallery image into app-private storage so it survives gallery
- * permission revocation and file moves. Returns the persisted absolute path.
- */
-private fun persistWallpaper(
-    context: Context,
-    uri: Uri,
-): String? =
-    runCatching {
-        val target = File(context.filesDir, "wallpaper.jpg")
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        }
-        target.absolutePath
-    }.getOrNull()

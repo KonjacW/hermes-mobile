@@ -99,6 +99,19 @@ data/local/AuthManager.kt         # object 单例：get/set + StateFlow 供 UI c
 - **选图**：`rememberLauncherForActivityResult(ActivityResultContracts.GetContent())`，MIME `"image/*"`；copy 到 `context.filesDir` 持久化（相册 Uri 会失效）。
 - **壁纸/背景图**：`AsyncImage(model=filePath, contentScale=Crop, colorFilter=..., modifier=Modifier.blur(...))`。
 
+### 坑：Coil 3 不再把文件的最后写入时间并进缓存键
+
+Coil 2 会并；**Coil 3 默认不并**（官方升级文档 *"A file's last write timestamp is no longer added to its cache key by default"*，为的是不在主线程读磁盘）。所以：
+
+> **只要把不同的图片内容写到同一个路径，第二次永远显示第一次的位图。**
+
+要显示「同一路径上的新内容」，三条路选一：
+1. **每次写新文件名**（本 fork 的壁纸做法，见 `data/config/WallpaperFiles.kt`）——最省事，且对任何缓存层都免疫；
+2. `ImageRequest.Builder.addLastModifiedToFileCacheKey(true)`（或 `ImageLoader.Builder` 上全局开）；
+3. 自己给请求设 `memoryCacheKey`。
+
+另外：`WallpaperConfig` 这类 `@Serializable` data class 一旦**字段值完全没变**（比如路径字符串相同），`AuthManager` 的 `MutableStateFlow.value = x` 会按 `equals` 去重而**不发射**，Compose 连重组都不会发生——「换了设置没反应」类的问题要同时怀疑这一层。（严格说：只有当整个对象 equals 相等时才不发射；若同时有别的字段在变——例如 `SettingsViewModel` 的 `isSaved` 由 true 变 false——状态仍会发射。所以「靠状态发射兜住缓存」是概率性生效，不能当修法。）
+
 ## 8. 本次改动落点（速查）
 
 | 功能 | 落点 |
