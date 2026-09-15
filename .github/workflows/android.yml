@@ -162,7 +162,11 @@ jobs:
     needs: [changes]
     if: github.event_name != 'pull_request' || needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Fork note: a fork repo has no Gradle build cache (setup-gradle defaults to
+    # cache-read-only on non-default branches, and the fork has no
+    # GRADLE_ENCRYPTED_KEY secret), so a cold unit-test run takes ~3-5 min more
+    # than upstream's cached 7m20s and overruns the original 10 min budget.
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
