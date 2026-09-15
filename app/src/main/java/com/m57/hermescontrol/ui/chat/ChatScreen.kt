@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -578,6 +579,17 @@ fun ChatScreen(
             // Bound to the same hydrated todos / subagentIndicators state.
             // Auto-hides when all todos complete/cancel and no subagent is running.
             val workActive = shouldShowProgressChip(state.todos, state.subagentIndicators)
+            // T0: logs every flip, so a device repro shows whether the chip went away
+            // because the state was emptied or because nothing was marked running.
+            LaunchedEffect(workActive) {
+                Log.i(
+                    SUBAGENT_CHIP_TAG,
+                    "chip visible=$workActive todos=${state.todos.size} " +
+                        "openTodos=${state.todos.count { !it.isCompleted && !it.isCancelled }} " +
+                        "indicators=${state.subagentIndicators.size} " +
+                        "running=${state.subagentIndicators.count { it.isRunning }}",
+                )
+            }
             TaskProgressChip(
                 visible = workActive,
                 todos = state.todos,

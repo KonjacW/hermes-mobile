@@ -50,6 +50,15 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 private const val TAG = "ChatViewModel"
+
+/**
+ * T0 diagnostic tag (2026-09-15): the three places that decide whether the task
+ * progress chip survives a session switch all log under this one tag, so a single
+ * `adb logcat -s SubagentChip` run tells us which step breaks. Temporary — remove
+ * once the root cause is pinned.
+ */
+internal const val SUBAGENT_CHIP_TAG = "SubagentChip"
+
 private const val MESSAGE_PAGE_SIZE = 150
 
 private data class PreparedAttachment(
@@ -1043,7 +1052,17 @@ class ChatViewModel(
     ) {
         val method = idToMethod.remove(id) ?: return
         val request = sessionRequestById.remove(id)
-        if (request != null && isStaleSessionRequest(request)) return
+        if (request != null && isStaleSessionRequest(request)) {
+            // T0: silent until now — a stale resume is one of the ways the progress
+            // chip can fail to come back after switching sessions.
+            Log.i(
+                SUBAGENT_CHIP_TAG,
+                "stale-drop(result) method=$method reqGen=${request.generation} curGen=$sessionGeneration " +
+                    "reqSid=${request.sessionId} curSid=${_uiState.value.currentSessionId} " +
+                    "reqSeq=${request.resumeSequence} curSeq=$activeResumeRequestSequence",
+            )
+            return
+        }
         when (method) {
             WsMethods.SESSION_CREATE -> {
                 val resultMap = result as? Map<String, Any?> ?: return
@@ -1327,7 +1346,16 @@ class ChatViewModel(
     ) {
         val method = idToMethod.remove(id) ?: return
         val request = sessionRequestById.remove(id)
-        if (request != null && isStaleSessionRequest(request)) return
+        if (request != null && isStaleSessionRequest(request)) {
+            // T0: a failed/stale resume means hydrateSubagents never runs either.
+            Log.i(
+                SUBAGENT_CHIP_TAG,
+                "stale-drop(error) reqGen=${request.generation} curGen=$sessionGeneration " +
+                    "reqSid=${request.sessionId} curSid=${_uiState.value.currentSessionId} " +
+                    "reqSeq=${request.resumeSequence} curSeq=$activeResumeRequestSequence",
+            )
+            return
+        }
         val errorMsg =
             when (error) {
                 is Map<*, *> -> error["message"] as? String ?: error.toString()

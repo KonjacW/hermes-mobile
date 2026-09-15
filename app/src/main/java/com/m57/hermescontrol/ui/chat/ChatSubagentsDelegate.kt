@@ -40,18 +40,35 @@ class ChatSubagentsDelegate(
      */
     fun hydrateSubagents(sessionId: String? = runtimeSessionId()) {
         val targetSession = sessionId?.trim()
-        if (targetSession.isNullOrEmpty()) return
+        if (targetSession.isNullOrEmpty()) {
+            Log.i(SUBAGENT_CHIP_TAG, "hydrate skipped: blank session id")
+            return
+        }
 
         val requestTime = System.currentTimeMillis()
         hydrationJob?.cancel()
         hydrationJob =
             scope.launch(ioDispatcher) {
                 try {
-                    val response = subagentRepository.listSubagents(targetSession) ?: return@launch
+                    val response = subagentRepository.listSubagents(targetSession)
+                    // T0: distinguishes "the roster request never ran" from "it ran
+                    // and the server had nothing for this session".
+                    Log.i(
+                        SUBAGENT_CHIP_TAG,
+                        "hydrate session=$targetSession -> subagents=${response?.subagents?.size ?: "null(failed)"} " +
+                            "statuses=${response?.subagents?.map { it.status }}",
+                    )
+                    if (response == null) return@launch
+                    val before = uiState.value.subagentIndicators
                     uiState.update { current ->
                         val merged = mergeSubagentList(current.subagentIndicators, response.subagents, requestTime)
                         current.copy(subagentIndicators = merged)
                     }
+                    val after = uiState.value.subagentIndicators
+                    Log.i(
+                        SUBAGENT_CHIP_TAG,
+                        "hydrate merged ${before.size}->${after.size} running=${after.count { it.isRunning }}",
+                    )
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
