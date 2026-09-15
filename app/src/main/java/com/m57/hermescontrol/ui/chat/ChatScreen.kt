@@ -566,7 +566,6 @@ fun ChatScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
                     .imePadding(),
         ) {
             ChatConnectionBanner(

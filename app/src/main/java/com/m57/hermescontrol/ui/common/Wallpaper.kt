@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.ColorFilter
@@ -24,8 +25,12 @@ import com.m57.hermescontrol.data.config.WallpaperConfig
  */
 @Composable
 fun WallpaperLayer(config: WallpaperConfig) {
-    val uri = config.uri ?: return
+    val path = config.uri ?: return
     val scrim = MaterialTheme.colorScheme.background
+    // Coil3 resolves a file:// Uri (or a scheme-less absolute path) through its
+    // built-in FileUriFetcher; normalizing to file:// removes any ambiguity in
+    // how a ROM's Uri parser handles a bare path.
+    val imageModel = remember(path) { if (path.contains("://")) path else "file://$path" }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val brightnessMatrix =
@@ -33,7 +38,7 @@ fun WallpaperLayer(config: WallpaperConfig) {
                 setToScale(config.brightness, config.brightness, config.brightness, 1f)
             }
         AsyncImage(
-            model = uri,
+            model = imageModel,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             colorFilter = ColorFilter.colorMatrix(brightnessMatrix),

@@ -103,7 +103,6 @@ fun ConnectScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
                 .imePadding(),
         contentAlignment = Alignment.Center,
     ) {

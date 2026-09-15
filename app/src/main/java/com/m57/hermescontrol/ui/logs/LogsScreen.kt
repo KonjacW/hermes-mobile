@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -198,8 +197,7 @@ fun LogsScreen(
                         state = listState,
                         modifier =
                             Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surfaceContainerLowest),
+                                .fillMaxSize(),
                         contentPadding =
                             PaddingValues(
                                 horizontal = spacing.md,
