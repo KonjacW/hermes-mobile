@@ -225,6 +225,18 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
+      # Fork note: GitHub-hosted runners start with no ~/.android/debug.keystore,
+      # so AGP generates a fresh random debug key on every run. Each build then
+      # carries a different signature and can no longer upgrade-install over the
+      # previous one — every test install would need uninstall + re-login and
+      # would wipe the app's local cache. Caching the AGP-generated keystore
+      # pins one stable signature per branch, with no binary committed to the repo.
+      - name: Cache Android debug keystore
+        uses: actions/cache@v6
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-v1
+
       - name: Build assembleDebug
         run: ./gradlew assembleDebug
 
