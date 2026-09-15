@@ -255,17 +255,25 @@ jobs:
             echo "::error::pinned debug keystore is not the expected identity (expected $expected, got '$actual')"
             exit 1
           fi
-          # AGP does NOT necessarily read $HOME/.android/debug.keystore: the debug
-          # keystore is resolved from the "Android user home", which a GitHub runner
-          # can point elsewhere. A previous run proved the failure mode — the build
-          # silently generated its own throwaway key. So populate every plausible
-          # root, and let the post-build apksigner assertion prove which one AGP used.
-          for root in "$HOME" "${ANDROID_USER_HOME:-$HOME}" "${ANDROID_PREFS_ROOT:-$HOME}" "${ANDROID_SDK_HOME:-$HOME}"; do
+          # AGP resolves the debug keystore from the *Android user home*, which on a
+          # GitHub runner is $XDG_CONFIG_HOME/.android — NOT $HOME/.android. Proved by
+          # `./gradlew :app:signingReport` in run 34936916047, which reported:
+          #   Store: /home/runner/.config/.android/debug.keystore
+          # while $HOME/.android/debug.keystore was also present and ignored. Populate
+          # every plausible root; the post-build apksigner assertion is what actually
+          # proves AGP picked one of them up.
+          for root in \
+            "$HOME" \
+            "${ANDROID_USER_HOME:-}" \
+            "${ANDROID_PREFS_ROOT:-}" \
+            "${ANDROID_SDK_HOME:-}" \
+            "${XDG_CONFIG_HOME:-$HOME/.config}"; do
+            [ -n "$root" ] || continue
             mkdir -p "$root/.android"
             cp "$pinned" "$root/.android/debug.keystore"
             echo "placed debug keystore at $root/.android/debug.keystore"
           done
-          env | grep -iE '^(ANDROID|HOME)' | sort
+          env | grep -iE '^(ANDROID|HOME|XDG)' | sort
 
       - name: Build assembleDebug
         run: ./gradlew assembleDebug
