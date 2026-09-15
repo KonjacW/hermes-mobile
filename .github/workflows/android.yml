@@ -290,9 +290,19 @@ jobs:
           echo "--- gradle signingReport (debug variant) ---"
           ./gradlew -q :app:signingReport 2>&1 | grep -A 8 -m1 'Variant: debug' || true
           echo "--- apksigner verify --print-certs ---"
-          "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | tee /tmp/certs.txt
-          if ! grep -qi '7c:cc:a9:61' /tmp/certs.txt; then
-            echo "::error::debug APK is not signed by the pinned debug keystore"
+          # apksigner prints the digest lowercase with no separators ("7ccca961…"),
+          # unlike keytool's "7C:CC:A9:61…" — normalize before comparing, or the
+          # assertion reports a false failure on a correctly signed APK.
+          expected="7ccca961aa7157a4ac9cb2e8512f3a47b6c743078703cd6b9662fdc290e18eb7"
+          actual=$(
+            "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk \
+              | tee /tmp/certs.txt \
+              | grep -m1 'certificate SHA-256 digest' \
+              | tr -d ':' | tr 'A-F' 'a-f' | awk '{print $NF}'
+          )
+          echo "APK signer certificate SHA-256: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::debug APK is not signed by the pinned debug keystore (expected $expected, got '$actual')"
             exit 1
           fi
 
