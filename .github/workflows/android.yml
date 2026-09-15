@@ -243,21 +243,50 @@ jobs:
             echo "::error::DEBUG_KEYSTORE_BASE64 is not set — this build would get a throwaway signature"
             exit 1
           fi
-          mkdir -p "$HOME/.android"
-          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$HOME/.android/debug.keystore"
+          pinned=/tmp/pinned-debug.keystore
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$pinned"
           # Assert the pinned identity instead of hoping: a wrong/rotated secret would
           # otherwise only surface later as an "app not installed" on someone's phone.
           expected="7C:CC:A9:61:AA:71:57:A4:AC:9C:B2:E8:51:2F:3A:47:B6:C7:43:07:87:03:CD:6B:96:62:FD:C2:90:E1:8E:B7"
-          actual=$(keytool -J-Duser.language=en -list -v -keystore "$HOME/.android/debug.keystore" \
+          actual=$(keytool -J-Duser.language=en -list -v -keystore "$pinned" \
             -storepass android -alias androiddebugkey | grep -m1 'SHA256:' | sed 's/.*SHA256: *//')
-          echo "debug keystore certificate SHA-256: $actual"
+          echo "pinned keystore certificate SHA-256: $actual"
           if [ "$actual" != "$expected" ]; then
             echo "::error::pinned debug keystore is not the expected identity (expected $expected, got '$actual')"
             exit 1
           fi
+          # AGP does NOT necessarily read $HOME/.android/debug.keystore: the debug
+          # keystore is resolved from the "Android user home", which a GitHub runner
+          # can point elsewhere. A previous run proved the failure mode — the build
+          # silently generated its own throwaway key. So populate every plausible
+          # root, and let the post-build apksigner assertion prove which one AGP used.
+          for root in "$HOME" "${ANDROID_USER_HOME:-$HOME}" "${ANDROID_PREFS_ROOT:-$HOME}" "${ANDROID_SDK_HOME:-$HOME}"; do
+            mkdir -p "$root/.android"
+            cp "$pinned" "$root/.android/debug.keystore"
+            echo "placed debug keystore at $root/.android/debug.keystore"
+          done
+          env | grep -iE '^(ANDROID|HOME)' | sort
 
       - name: Build assembleDebug
         run: ./gradlew assembleDebug
+
+      # The keystore assertion above only proves the file we wrote is correct. This
+      # one proves the artifact is signed by it — a different key cannot upgrade over
+      # the previous install and would force another uninstall on the phone.
+      - name: Assert the APK is signed with the pinned identity
+        run: |
+          set -e
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          apksigner=$(ls -d "$SDK"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          echo "using $apksigner"
+          echo "--- gradle signingReport (debug variant) ---"
+          ./gradlew -q :app:signingReport 2>&1 | grep -A 8 -m1 'Variant: debug' || true
+          echo "--- apksigner verify --print-certs ---"
+          "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | tee /tmp/certs.txt
+          if ! grep -qi '7c:cc:a9:61' /tmp/certs.txt; then
+            echo "::error::debug APK is not signed by the pinned debug keystore"
+            exit 1
+          fi
 
       - name: Upload Debug APK Artifact
         if: success()
