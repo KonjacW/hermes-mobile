@@ -120,4 +120,71 @@ class ChatClarifyDelegate(
             }
         }
     }
+
+    /**
+     * Surface a pending clarify carried by session.resume / session.info
+     * (server `_session_info_payload.pending_clarify`) — the reconnect path
+     * that replays a prompt whose original `clarify.request` event was already
+     * consumed and is never re-emitted. Mirrors ChatApprovalsDelegate's
+     * pending-approval replay.
+     */
+    fun maybeSurfacePendingClarify(map: Map<*, *>) {
+        val clarify = parseClarifyUi(map) ?: return
+        val current = uiState.value.clarifyRequest
+        val alreadyShown = clarify.clarifyId != null && current?.clarifyId == clarify.clarifyId
+        if (!alreadyShown) {
+            uiState.update { it.copy(clarifyRequest = clarify) }
+        }
+    }
+}
+
+/**
+ * Convert a backend `pending_clarify` map (snake_case, from session.resume /
+ * session.info) into the [ClarifyUi] the chat screen renders. Mirrors the
+ * `clarify.request` parsing in [EventParser] so the reconnect and live paths
+ * agree.
+ */
+internal fun parseClarifyUi(map: Map<*, *>): ClarifyUi? {
+    val clarifyId = map["request_id"] as? String ?: map["clarify_id"] as? String
+
+    @Suppress("UNCHECKED_CAST")
+    val rawQuestions = map["questions"] as? List<*>
+    val questions =
+        if (rawQuestions != null && rawQuestions.isNotEmpty()) {
+            rawQuestions.mapIndexedNotNull { index, item ->
+                val q = item as? Map<*, *> ?: return@mapIndexedNotNull null
+                val qText = q["question"] as? String ?: return@mapIndexedNotNull null
+                val qid = q["qid"] as? String ?: "q$index"
+                @Suppress("UNCHECKED_CAST")
+                val qChoices = (q["choices"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                val qMulti = q["multi_select"] as? Boolean ?: false
+                ClarifyQuestionUi(
+                    qid = qid,
+                    question = qText,
+                    choices = qChoices,
+                    multiSelect = qMulti,
+                )
+            }
+        } else {
+            emptyList()
+        }
+
+    val text = map["question"] as? String ?: map["text"] as? String
+    @Suppress("UNCHECKED_CAST")
+    val options = (map["choices"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+    val questionId = map["qid"] as? String ?: map["question_id"] as? String
+    val multiSelect = map["multi_select"] as? Boolean ?: false
+
+    val hasBatch = questions.isNotEmpty()
+    val hasSingle = !text.isNullOrBlank() || options.isNotEmpty()
+    if (!hasBatch && !hasSingle) return null
+
+    return ClarifyUi(
+        text = text.orEmpty(),
+        options = options,
+        clarifyId = clarifyId,
+        questionId = questionId,
+        multiSelect = multiSelect,
+        questions = questions,
+    )
 }

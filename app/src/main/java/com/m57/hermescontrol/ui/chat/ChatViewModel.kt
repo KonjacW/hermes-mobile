@@ -870,6 +870,13 @@ class ChatViewModel(
                             runtimeSessionId ?: _uiState.value.currentSessionId,
                         )
                     }
+                    // Same reconciliation for a pending clarify prompt — its
+                    // `clarify.request` event was consumed at first popup and
+                    // is never re-emitted on reconnect.
+                    val pendingClarify = info["pending_clarify"] as? Map<*, *>
+                    if (pendingClarify != null) {
+                        clarifyDelegate.maybeSurfacePendingClarify(pendingClarify)
+                    }
                 }
             }
 
@@ -1217,6 +1224,12 @@ class ChatViewModel(
                         pendingApproval,
                         runtimeSessionId ?: sessionId,
                     )
+                }
+                // Same for a pending clarify — the `clarify.request` event was
+                // consumed at first popup and is never re-emitted on resume.
+                val pendingClarify = resultMap?.get("pending_clarify") as? Map<*, *>
+                if (pendingClarify != null) {
+                    clarifyDelegate.maybeSurfacePendingClarify(pendingClarify)
                 }
                 val activeSessionId = runtimeSessionId ?: sessionId
                 if (activeSessionId != null) approvalsDelegate.replayPendingApproval(activeSessionId)
