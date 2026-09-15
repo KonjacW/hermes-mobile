@@ -10,6 +10,7 @@ import com.m57.hermescontrol.data.config.ServerStore
 import com.m57.hermescontrol.data.config.ServerStoreMigration
 import com.m57.hermescontrol.data.config.ServerStoreSerializer
 import com.m57.hermescontrol.data.config.ServerUrlMigration
+import com.m57.hermescontrol.data.config.WallpaperConfig
 import com.m57.hermescontrol.data.config.resolvedBaseUrl
 import com.m57.hermescontrol.data.config.resolvedHost
 import com.m57.hermescontrol.data.config.resolvedPort
@@ -77,6 +78,9 @@ object AuthManager {
 
     private val _chatFontScaleFlow = MutableStateFlow<Float>(1.0f)
     val chatFontScaleFlow: StateFlow<Float> = _chatFontScaleFlow.asStateFlow()
+
+    private val _wallpaperFlow = MutableStateFlow<WallpaperConfig>(WallpaperConfig())
+    val wallpaperFlow: StateFlow<WallpaperConfig> = _wallpaperFlow.asStateFlow()
 
     private val _tokenFlow = MutableStateFlow<String?>(null)
     val tokenFlow: StateFlow<String?> = _tokenFlow.asStateFlow()
@@ -185,6 +189,7 @@ object AuthManager {
                     _useDynamicColorsFlow.value = state.useDynamicColors
                     _themePresetFlow.value = state.themePreset
                     _chatFontScaleFlow.value = state.chatFontScale
+                    _wallpaperFlow.value = state.wallpaper
                     // B7 (Jul 08 2026, kanban t_470): keep cookie scope aligned with active profile.
                     appScope?.launch { syncCookieStoreForProfile(state.selectedProfileId) }
                 }
@@ -720,6 +725,15 @@ object AuthManager {
     fun setChatFontScale(scale: Float) {
         serverStore.update { it.copy(chatFontScale = scale) }
         _chatFontScaleFlow.value = scale
+    }
+
+    // ── Wallpaper (single photo + tunables) ──────────────────────────────
+
+    fun getWallpaper(): WallpaperConfig = serverStore.getLatestState().wallpaper
+
+    fun setWallpaper(config: WallpaperConfig) {
+        serverStore.update { it.copy(wallpaper = config) }
+        _wallpaperFlow.value = config
     }
 
     // ── In-app update check (issue #867) ─────────────────────────────────

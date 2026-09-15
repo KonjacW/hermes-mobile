@@ -24,6 +24,8 @@ data class ServerStoreState(
     val typingEffectEnabled: Boolean = true,
     val typingEffectDelayMs: Int = 30,
     val chatFontScale: Float = 1.0f,
+    // Single-photo wallpaper + its tunables (brightness / scrim / blur).
+    val wallpaper: WallpaperConfig = WallpaperConfig(),
     // App display language. "system" = follow device locale; otherwise a BCP-47
     // language code such as "en" or "ko". Applied via ContextWrapper in MainActivity.
     val appLanguage: String = "system",

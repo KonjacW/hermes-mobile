@@ -45,6 +45,7 @@ import com.m57.hermescontrol.ui.settings.components.TestResultCard
 import com.m57.hermescontrol.ui.settings.components.VaultItemsSection
 import com.m57.hermescontrol.ui.settings.components.VaultSourcesSection
 import com.m57.hermescontrol.ui.settings.components.VaultUnlockDialog
+import com.m57.hermescontrol.ui.settings.components.WallpaperSection
 
 /**
  * Drill-down sub-pages for Settings. Each is its own NavKey destination
@@ -139,6 +140,11 @@ internal fun SettingsAppearancePage(
                 onUseDynamicColorsChange = viewModel::onUseDynamicColorsChange,
                 themePreset = state.themePreset,
                 onThemePresetChange = viewModel::onThemePresetChange,
+            )
+            WallpaperSection(
+                wallpaper = state.wallpaper,
+                onWallpaperChange = viewModel::onWallpaperChange,
+                onWallpaperRemoved = viewModel::onWallpaperRemoved,
             )
         }
     }

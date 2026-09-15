@@ -3,6 +3,7 @@ package com.m57.hermescontrol.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.m57.hermescontrol.data.config.ConnectionProfile
+import com.m57.hermescontrol.data.config.WallpaperConfig
 import com.m57.hermescontrol.data.config.resolveBaseUrl
 import com.m57.hermescontrol.data.local.AuthManager
 import com.m57.hermescontrol.data.remote.ApiClient
@@ -38,6 +39,7 @@ data class SettingsUiState(
     val typingEffectEnabled: Boolean = false,
     val typingEffectDelayMs: Int = 30,
     val chatFontScale: Float = 1.0f,
+    val wallpaper: WallpaperConfig = WallpaperConfig(),
     val profiles: List<ConnectionProfile> = emptyList(),
     val selectedProfileId: String? = null,
     val renameProfileName: String = "",
@@ -80,6 +82,7 @@ class SettingsViewModel(
         val typingEffectEnabled = AuthManager.isTypingEffectEnabled()
         val typingEffectDelayMs = AuthManager.getTypingEffectDelayMs()
         val chatFontScale = AuthManager.getChatFontScale()
+        val wallpaper = AuthManager.getWallpaper()
         val profiles = AuthManager.getConnectionProfiles()
         val appLanguage = AuthManager.getAppLanguage()
         val renameProfileName =
@@ -101,6 +104,7 @@ class SettingsViewModel(
                 typingEffectEnabled = typingEffectEnabled,
                 typingEffectDelayMs = typingEffectDelayMs,
                 chatFontScale = chatFontScale,
+                wallpaper = wallpaper,
                 profiles = profiles,
                 selectedProfileId = selectedId,
                 renameProfileName = renameProfileName,
@@ -325,6 +329,17 @@ class SettingsViewModel(
     fun onChatFontScaleChange(scale: Float) {
         _uiState.update { it.copy(chatFontScale = scale, isSaved = false) }
         AuthManager.setChatFontScale(scale)
+    }
+
+    // ── Wallpaper ────────────────────────────────────────────────────────
+
+    fun onWallpaperChange(config: WallpaperConfig) {
+        _uiState.update { it.copy(wallpaper = config, isSaved = false) }
+        AuthManager.setWallpaper(config)
+    }
+
+    fun onWallpaperRemoved() {
+        onWallpaperChange(WallpaperConfig())
     }
 
     /** Clear all auth credentials — logs out and returns to landing screen. */
