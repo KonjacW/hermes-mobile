@@ -16,8 +16,12 @@ data class WallpaperConfig(
     val uri: String? = null,
     /** Brightness multiplier applied to the image. 1.0f = untouched. */
     val brightness: Float = 1.0f,
-    /** Opacity of the navy scrim laid over the image to keep warm-white text readable. */
-    val scrimAlpha: Float = 0.85f,
+    /**
+     * Opacity of the navy scrim laid over the image to keep warm-white text
+     * readable. 0.6 keeps the photo clearly visible; raise it toward 1.0 on a
+     * very bright photo where text contrast suffers.
+     */
+    val scrimAlpha: Float = 0.6f,
     /** Blur radius in dp. 0f = no blur. */
     val blurRadius: Float = 0f,
 )

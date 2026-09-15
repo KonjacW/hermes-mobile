@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -319,6 +320,11 @@ fun MainNavigation(sessionId: String? = null) {
         ) {
             Scaffold(
                 contentWindowInsets = WindowInsets.navigationBars,
+                // Transparent so the wallpaper layer drawn behind MainNavigation
+                // (see MainActivity) shows through every screen. Scaffold's
+                // default containerColor is an opaque colorScheme.background
+                // that would otherwise cover the wallpaper entirely.
+                containerColor = Color.Transparent,
             ) { paddingValues ->
                 NavDisplay(
                     backStack = backStack,
