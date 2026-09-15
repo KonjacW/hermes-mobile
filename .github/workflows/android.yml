@@ -225,17 +225,36 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      # Fork note: GitHub-hosted runners start with no ~/.android/debug.keystore,
-      # so AGP generates a fresh random debug key on every run. Each build then
-      # carries a different signature and can no longer upgrade-install over the
-      # previous one — every test install would need uninstall + re-login and
-      # would wipe the app's local cache. Caching the AGP-generated keystore
-      # pins one stable signature per branch, with no binary committed to the repo.
-      - name: Cache Android debug keystore
-        uses: actions/cache@v6
-        with:
-          path: ~/.android/debug.keystore
-          key: android-debug-keystore-v1
+      # Fork note: GitHub-hosted runners start with no ~/.android/debug.keystore, so
+      # AGP generates a fresh random debug key on every run. Each build would then
+      # carry a different signature and could no longer upgrade-install over the
+      # previous one — every install would need uninstall + re-login, wiping the
+      # app's local cache. So restore one pinned keystore (alias `androiddebugkey`,
+      # store/key password `android`, which is what AGP's debug signing config
+      # expects) instead of letting the runner invent one. Deliberately not
+      # actions/cache: a cached key is evictable and branch-scoped, and once it is
+      # evicted the app's signing identity is gone for good, forcing another
+      # uninstall. The same bytes also live offline as a backup.
+      - name: Restore pinned debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::error::DEBUG_KEYSTORE_BASE64 is not set — this build would get a throwaway signature"
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$HOME/.android/debug.keystore"
+          # Assert the pinned identity instead of hoping: a wrong/rotated secret would
+          # otherwise only surface later as an "app not installed" on someone's phone.
+          expected="7C:CC:A9:61:AA:71:57:A4:AC:9C:B2:E8:51:2F:3A:47:B6:C7:43:07:87:03:CD:6B:96:62:FD:C2:90:E1:8E:B7"
+          actual=$(keytool -J-Duser.language=en -list -v -keystore "$HOME/.android/debug.keystore" \
+            -storepass android -alias androiddebugkey | grep -m1 'SHA256:' | sed 's/.*SHA256: *//')
+          echo "debug keystore certificate SHA-256: $actual"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::pinned debug keystore is not the expected identity (expected $expected, got '$actual')"
+            exit 1
+          fi
 
       - name: Build assembleDebug
         run: ./gradlew assembleDebug
