@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.dp
 import com.m57.hermescontrol.R
 import com.m57.hermescontrol.data.config.WallpaperConfig
 import com.m57.hermescontrol.ui.settings.SectionCard
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Wallpaper settings: pick a single photo from the gallery, remove it, and
@@ -115,7 +115,10 @@ private fun WallpaperSlider(
  * Copy a picked gallery image into app-private storage so it survives gallery
  * permission revocation and file moves. Returns the persisted absolute path.
  */
-private fun persistWallpaper(context: Context, uri: Uri): String? =
+private fun persistWallpaper(
+    context: Context,
+    uri: Uri,
+): String? =
     runCatching {
         val target = File(context.filesDir, "wallpaper.jpg")
         context.contentResolver.openInputStream(uri)?.use { input ->

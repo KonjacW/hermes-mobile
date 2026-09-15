@@ -155,6 +155,7 @@ internal fun parseClarifyUi(map: Map<*, *>): ClarifyUi? {
                 val q = item as? Map<*, *> ?: return@mapIndexedNotNull null
                 val qText = q["question"] as? String ?: return@mapIndexedNotNull null
                 val qid = q["qid"] as? String ?: "q$index"
+
                 @Suppress("UNCHECKED_CAST")
                 val qChoices = (q["choices"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
                 val qMulti = q["multi_select"] as? Boolean ?: false
@@ -170,6 +171,7 @@ internal fun parseClarifyUi(map: Map<*, *>): ClarifyUi? {
         }
 
     val text = map["question"] as? String ?: map["text"] as? String
+
     @Suppress("UNCHECKED_CAST")
     val options = (map["choices"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
     val questionId = map["qid"] as? String ?: map["question_id"] as? String
